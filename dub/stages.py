@@ -6,6 +6,7 @@ in the youtube-dub-colab repository and consumes the zip built here.
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,8 @@ def s1_download(job):
     cmd = ["yt-dlp", "-o", str(job.root / "source.%(ext)s"), "--no-playlist", "-f", settings["format"]]
     if settings["cookies"]:
         cmd += ["--cookies", settings["cookies"]]
+    if settings.get("extra_args"):
+        cmd += shlex.split(settings["extra_args"])
     cmd.append(job.url)
     run(cmd)
 

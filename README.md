@@ -52,10 +52,51 @@ Stages record their result in `manifest.json` and are skipped on re-run unless
 | `SILICONFLOW_MODEL` | `deepseek-ai/DeepSeek-V4.1-Flash` | |
 | `TRANSLATE_BATCH` | `20` | cues per request |
 | `YTDLP_COOKIES` | — | path to `cookies.txt` for sites that require login |
+| `YTDLP_ARGS` | — | extra yt-dlp flags, shell-quoted (see below) |
 | `WHISPERX_MODEL` | `small` | `small` keeps CPU time sane; use `large-v2` only with a GPU |
 | `WHISPERX_DEVICE` | `cpu` | |
 | `WHISPERX_COMPUTE_TYPE` | `int8` | |
 | `DEMUCS_MODEL` | `htdemucs` | |
+
+## YouTube bot checks
+
+YouTube increasingly answers `yt-dlp` with *Sign in to confirm you're not a bot*,
+and with an unauthenticated client it may expose only storyboards and no media
+streams. What worked when this was verified:
+
+```bash
+yt-dlp --js-runtimes node \
+  --cookies-from-browser chrome \
+  --extractor-args "youtube:player_client=web_embedded" \
+  --proxy http://127.0.0.1:7890 \
+  -f sb0 --write-auto-subs --sub-langs en --convert-subs srt \
+  --skip-download -o source.%(ext)s "https://www.youtube.com/watch?v=..."
+
+python3 -m dub import-subs --job jobs/demo --srt source.en.srt
+```
+
+Notes from that run:
+
+- `--js-runtimes node` matters: without a JavaScript runtime yt-dlp warns that
+  extraction is deprecated and formats go missing.
+- `--extractor-args "youtube:player_client=web_embedded"` pins the client that
+  passed the challenge; the default client rotation hit the bot check far more often.
+- `-f sb0` only satisfies format selection; subtitles download regardless.
+- Passing those flags to the pipeline: `export YTDLP_ARGS='--js-runtimes node --extractor-args youtube:player_client=web_embedded'`.
+
+## Using existing subtitles instead of ASR
+
+`import-subs` adopts an SRT you already have (for example YouTube auto-captions)
+as the `s3` output, so `s4` can run without WhisperX:
+
+```bash
+python3 -m dub import-subs --job jobs/demo --srt source.en.srt --limit 60
+```
+
+Auto-captions are rolling fragments where each cue repeats the previous one
+("One of the" → "One of the" → "One of the most popular OCR"). `import-subs`
+merges them into sentence-level cues and removes the overlap; `--no-merge` keeps
+them verbatim.
 
 ## Translation keeps cue alignment
 

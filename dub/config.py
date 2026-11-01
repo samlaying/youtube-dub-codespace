@@ -27,6 +27,8 @@ def download():
     return {
         "cookies": get("YTDLP_COOKIES", ""),
         "format": get("YTDLP_FORMAT", "bv*[height<=1080]+ba/b[height<=1080]/b"),
+        # Extra flags, e.g. "--js-runtimes node --extractor-args youtube:player_client=web_embedded"
+        "extra_args": get("YTDLP_ARGS", ""),
     }
 
 

@@ -10,8 +10,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import stages
+from . import captions, stages
 from .job import STAGES, STAGE_NAMES, Job
+from .srt import parse, format as format_srt
 
 
 def cmd_init(args):
@@ -63,6 +64,29 @@ def cmd_run(args):
     return 0
 
 
+def cmd_import_subs(args):
+    """Adopt an existing SRT (e.g. YouTube auto-captions) as stage s3 output."""
+    job = Job.load(Path(args.job).resolve())
+    source = Path(args.srt).resolve()
+    if not source.exists():
+        raise SystemExit(f"no such subtitle file: {source}")
+
+    cues = parse(source.read_text(encoding="utf-8", errors="ignore"))
+    if not cues:
+        raise SystemExit(f"no cues parsed from {source}")
+    if not args.no_merge:
+        cues = captions.merge_rolling(cues)
+    if args.limit:
+        cues = cues[: args.limit]
+
+    job.source_srt.parent.mkdir(parents=True, exist_ok=True)
+    job.source_srt.write_text(format_srt(cues), encoding="utf-8")
+    job.mark("s3", "done", source=str(source), cues=len(cues),
+             note="imported subtitles" + ("" if args.no_merge else ", rolling fragments merged"))
+    print(f"imported {len(cues)} cues from {source}")
+    return 0
+
+
 def cmd_bundle(args):
     job = Job.load(Path(args.job).resolve())
     info = stages.bundle(job, args.out)
@@ -99,6 +123,13 @@ def main(argv=None):
     run.add_argument("--url", default="")
     run.add_argument("--force", action="store_true")
     run.set_defaults(func=cmd_run)
+
+    subs = sub.add_parser("import-subs", help="use an existing SRT instead of running ASR")
+    subs.add_argument("--job", required=True)
+    subs.add_argument("--srt", required=True)
+    subs.add_argument("--limit", type=int, default=0)
+    subs.add_argument("--no-merge", action="store_true")
+    subs.set_defaults(func=cmd_import_subs)
 
     bundle = sub.add_parser("bundle", help="zip the job for the Colab repo")
     bundle.add_argument("--job", required=True)
