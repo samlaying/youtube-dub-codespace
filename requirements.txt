@@ -1,0 +1,4 @@
+# CPU-only stack. Demucs and WhisperX both pull PyTorch, which dominates install time.
+yt-dlp>=2024.1.0
+demucs>=4.0.1
+whisperx>=3.1.0
