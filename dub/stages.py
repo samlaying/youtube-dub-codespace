@@ -228,10 +228,11 @@ def s4_translate(job):
 # ------------------------------------------------------------------- bundle
 
 
+# vocals.wav is intentionally excluded: the GPU half needs the background stem to
+# mix against and the translated text to speak, not the isolated voice.
 BUNDLE_FILES = (
     "manifest.json",
     "source.mp4",
-    "separated/vocals.wav",
     "separated/no_vocals.wav",
     "transcripts/source.srt",
     "translated/zh.srt",
