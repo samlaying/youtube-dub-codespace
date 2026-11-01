@@ -66,11 +66,11 @@ streams. What worked when this was verified:
 
 ```bash
 yt-dlp --js-runtimes node \
-  --cookies-from-browser chrome \
-  --extractor-args "youtube:player_client=web_embedded" \
+  --remote-components ejs:github \
+  --cookies /path/to/yt-cookies.txt \
+  --extractor-args "youtube:player_client=web" \
   --proxy http://127.0.0.1:7890 \
-  -f sb0 --write-auto-subs --sub-langs en --convert-subs srt \
-  --skip-download -o source.%(ext)s "https://www.youtube.com/watch?v=..."
+  -f 18 -o video.%(ext)s "https://www.youtube.com/watch?v=..."
 
 python3 -m dub import-subs --job jobs/demo --srt source.en.srt
 ```
@@ -82,7 +82,13 @@ Notes from that run:
 - `--extractor-args "youtube:player_client=web_embedded"` pins the client that
   passed the challenge; the default client rotation hit the bot check far more often.
 - `-f sb0` only satisfies format selection; subtitles download regardless.
-- Passing those flags to the pipeline: `export YTDLP_ARGS='--js-runtimes node --extractor-args youtube:player_client=web_embedded'`.
+- `--remote-components ejs:github` is what actually unlocks media formats: without it
+  yt-dlp warns that the `n` challenge could not be solved and returns storyboards only.
+  With it, and a logged-in cookie file, the progressive `18` (360p) format appears.
+  Without a PO token YouTube does not offer higher resolutions to `yt-dlp`.
+- Passing those flags to the pipeline:
+  `export YTDLP_ARGS='--js-runtimes node --remote-components ejs:github --extractor-args youtube:player_client=web --proxy http://127.0.0.1:7890'`
+  and `export YTDLP_FORMAT=18`.
 
 ## Using existing subtitles instead of ASR
 

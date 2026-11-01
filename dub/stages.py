@@ -47,7 +47,9 @@ def s1_download(job):
         raise SystemExit("job has no source url; pass --url to init")
 
     settings = config.download()
-    cmd = ["yt-dlp", "-o", str(job.root / "source.%(ext)s"), "--no-playlist", "-f", settings["format"]]
+    # Download under its own basename: subtitle sidecars use source.* and must not
+    # be mistaken for the video by the glob below.
+    cmd = ["yt-dlp", "-o", str(job.root / "video.%(ext)s"), "--no-playlist", "-f", settings["format"]]
     if settings["cookies"]:
         cmd += ["--cookies", settings["cookies"]]
     if settings.get("extra_args"):
@@ -55,11 +57,16 @@ def s1_download(job):
     cmd.append(job.url)
     run(cmd)
 
-    candidates = sorted(job.root.glob("source.*"))
+    video_exts = {".mp4", ".mkv", ".webm", ".mov", ".m4v", ".flv", ".ts"}
+    candidates = sorted(
+        path for path in job.root.glob("video.*")
+        if path.suffix.lower() in video_exts and path.is_file()
+    )
     if not candidates:
-        raise SystemExit("yt-dlp produced no file")
+        raise SystemExit("yt-dlp produced no video file")
     os.replace(candidates[0], job.video)
 
+    job.original_audio.parent.mkdir(parents=True, exist_ok=True)
     run(
         ["ffmpeg", "-y", "-i", job.video, "-vn", "-acodec", "pcm_s16le",
          "-ar", "16000", "-ac", "1", job.original_audio],

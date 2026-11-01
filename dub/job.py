@@ -107,6 +107,8 @@ class Job:
     def mark(self, stage, status, **extra):
         record = self.data.setdefault("stages", {}).setdefault(stage, {})
         record.update({"status": status, "updated_at": _now(), **extra})
+        if status != "failed":
+            record.pop("error", None)
         self.save()
 
     def require(self, stage, what):
